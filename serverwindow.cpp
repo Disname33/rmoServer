@@ -18,7 +18,7 @@ ServerWindow::ServerWindow(QWidget *parent)
         beamLineAngle = 0.0f;
         timer = new QTimer(this);
         connect(timer, SIGNAL(timeout()), this, SLOT(timerSlot()));
-        timer->start(60);
+        timer->start(50);
     }
     else
     {
@@ -95,9 +95,9 @@ void ServerWindow::timerSlot()
 {
     if(rotationStatus!=ui->buttonRotationStop->text()){
         if (rotationStatus==ui->buttonRotation3rpm->text())
-            beamLineAngle+=0.5f;
+            beamLineAngle+=0.9f;
         else
-            beamLineAngle+=1.0f;
+            beamLineAngle+=1.8f;
         if (beamLineAngle >= 360)
             beamLineAngle-= 360;
         sendToClients("angle", QString::number(beamLineAngle));
@@ -147,15 +147,15 @@ void ServerWindow::slotReadyRead()
             if(socket->bytesAvailable()<nextBlockSize)
                 break;
             nextBlockSize = 0;
-            QString str;
             QString action;
-            in >> action >> str;
-            qDebug() << action << str;
+            QString message;
+            in >> action >> message;
+            qDebug() << action << message;
 
             if (action == "rotation")
-                setCheckedRotationButton(str);
+                setCheckedRotationButton(message);
             else if (action == "radiation")
-                setCheckedRadiationButton(str);
+                setCheckedRadiationButton(message);
             else if (action == "Connect")
                 sendToClients("radiation", radiationStatus, socket);
             break;
@@ -169,12 +169,12 @@ void ServerWindow::slotReadyRead()
 }
 
 
-void ServerWindow::sendToClients(QString action, QString str, QTcpSocket* socket1)
+void ServerWindow::sendToClients(QString action, QString message, QTcpSocket* socket1)
 {
     data.clear();
     QDataStream out(&data, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_5_12);
-    out << quint16(0) << action << str;
+    out << quint16(0) << action << message;
     out.device()->seek(0);
     out << quint16(data.size()-sizeof(quint16));
     if (socket1!=nullptr)
