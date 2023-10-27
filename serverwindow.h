@@ -22,7 +22,7 @@ private:
     Ui::ServerWindow *ui;
     QTcpServer *server;
     QTcpSocket *socket;
-    QVector <QTcpSocket*> sockets;
+    QVector <QTcpSocket*> socketList;
     QByteArray data;
     QTimer *timer;
     float beamLineAngle;
