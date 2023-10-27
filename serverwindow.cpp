@@ -34,7 +34,9 @@ ServerWindow::~ServerWindow()
 
 // User Interafce
 
-void ServerWindow::setCheckedRotationButton(QString buttonText){
+// Setting indication of the active antenna rotation control button
+void ServerWindow::setCheckedRotationButton(QString buttonText)
+{
     QPushButton* buttons[3] = {ui->buttonRotationStop, ui->buttonRotation3rpm, ui->buttonRotation6rpm};
     rotationStatus = buttonText;
     for (auto btn : buttons)
@@ -45,6 +47,7 @@ void ServerWindow::setCheckedRotationButton(QString buttonText){
 
 }
 
+// Processing of clicked the antenna rotation control buttons
 void ServerWindow::on_buttonRotationStop_clicked()
 {
     setCheckedRotationButton(ui->buttonRotationStop->text());
@@ -62,7 +65,9 @@ void ServerWindow::on_buttonRotation6rpm_clicked()
     setCheckedRotationButton(ui->buttonRotation6rpm->text());
 }
 
-void ServerWindow::setCheckedRadiationButton(QString buttonText){
+// Setting indication of the active radiation control button
+void ServerWindow::setCheckedRadiationButton(QString buttonText)
+{
     QPushButton* buttons[3] = {ui->buttonRadiationOff, ui->buttonRadiation50, ui->buttonRadiation100};
     radiationStatus = buttonText;
     for (auto btn : buttons)
@@ -72,12 +77,12 @@ void ServerWindow::setCheckedRadiationButton(QString buttonText){
     sendToClients("radiation", buttonText);
 }
 
+// Processing of clicking the radiation control buttons
 void ServerWindow::on_buttonRadiationOff_clicked()
 {
     setCheckedRadiationButton(ui->buttonRadiationOff->text());
 
 }
-
 
 void ServerWindow::on_buttonRadiation50_clicked()
 {
@@ -90,7 +95,7 @@ void ServerWindow::on_buttonRadiation100_clicked()
     setCheckedRadiationButton(ui->buttonRadiation100->text());
 }
 
-//Timer
+//Updade beam line angle timer
 void ServerWindow::timerSlot()
 {
     if(rotationStatus!=ui->buttonRotationStop->text()){
@@ -105,30 +110,33 @@ void ServerWindow::timerSlot()
  }
 
 //Conections
-
+//Firct connection to client and sending all parameters
 void ServerWindow::slotNewConnection(){
     nextBlockSize = 0;
     socket = server->nextPendingConnection();
     connect(socket, &QTcpSocket::readyRead, this, &ServerWindow::slotReadyRead);
     connect(socket, &QTcpSocket::disconnected, this, &ServerWindow::slotClientDisconnected);
 
-    sockets.push_back(socket);
+    socketList.push_back(socket);
     connectionCounter();
 
     sendToClients("rotation", rotationStatus, socket);
-//    sendToClients("radiation", radiationStatus, socket);
+    sendToClients("radiation", radiationStatus, socket);
+    sendToClients("angle", QString::number(beamLineAngle), socket);
     qDebug() << "new rmo connected";
 }
 
+// Delete disconected client socket and this socket from socketList
 void ServerWindow::slotClientDisconnected()
 {
     socket = (QTcpSocket*)sender();
-    sockets.erase(std::remove(sockets.begin(),sockets.end(), socket), sockets.end());
+    socketList.erase(std::remove(socketList.begin(),socketList.end(), socket), socketList.end());
     socket->deleteLater();
     connectionCounter();
     qDebug() << "rmo disconnected";
 }
 
+//Receiving and processing messages from the clients
 void ServerWindow::slotReadyRead()
 {
     socket = (QTcpSocket*)sender();
@@ -136,7 +144,7 @@ void ServerWindow::slotReadyRead()
     in.setVersion(QDataStream::Qt_5_12);
     if(in.status()==QDataStream::Ok)
     {
-        for (; ; )
+        while (true)
         {
             if(nextBlockSize == 0)
             {
@@ -147,20 +155,16 @@ void ServerWindow::slotReadyRead()
             if(socket->bytesAvailable()<nextBlockSize)
                 break;
             nextBlockSize = 0;
-            QString action;
-            QString message;
-            in >> action >> message;
-            qDebug() << action << message;
+            QString parameter;
+            QString value;
+            in >> parameter >> value;
+            qDebug() << parameter << value;
 
-            if (action == "rotation")
-                setCheckedRotationButton(message);
-            else if (action == "radiation")
-                setCheckedRadiationButton(message);
-            else if (action == "Connect")
-                sendToClients("radiation", radiationStatus, socket);
-            break;
+            if (parameter == "rotation")
+                setCheckedRotationButton(value);
+            else if (parameter == "radiation")
+                setCheckedRadiationButton(value);
         }
-
     }
     else
     {
@@ -168,7 +172,7 @@ void ServerWindow::slotReadyRead()
     }
 }
 
-
+// Sending message to one client if it is specified in the parameters, else to all clients
 void ServerWindow::sendToClients(QString action, QString message, QTcpSocket* socket1)
 {
     data.clear();
@@ -184,17 +188,18 @@ void ServerWindow::sendToClients(QString action, QString message, QTcpSocket* so
     }
     else
     {
-        for(auto& s: sockets){
+        for(auto& s: socketList){
             if(s->state() == QAbstractSocket::ConnectedState || s->state() == QAbstractSocket::ConnectingState)
                 s->write(data);
         }
     }
 }
 
+// counts the number of connections and displays it on a button
 void ServerWindow::connectionCounter()
 {
-    ui->connectionCounterButton->setText(QString::number(sockets.size()));
-    ui->connectionCounterButton->setPalette(QPalette(sockets.size()==0?Qt::darkRed:Qt::darkGreen));
+    ui->connectionCounterButton->setText(QString::number(socketList.size()));
+    ui->connectionCounterButton->setPalette(QPalette(socketList.size()==0?Qt::darkRed:Qt::darkGreen));
 
 }
 
