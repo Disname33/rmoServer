@@ -1,11 +1,10 @@
-#include "serverwindow.h"
-
-#include <QApplication>
+#include <QtCore/QCoreApplication>
+#include <QtCore/qglobal.h>
+#include "rmoserver.h"
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    ServerWindow w;
-    w.show();
+    QCoreApplication a(argc, argv);
+    RmoServer server;
     return a.exec();
 }
