@@ -3,6 +3,14 @@
 #include <qdatastream.h>
 #include <QSettings>
 
+const QString RmoServer::parametersNames[] = {"Rotation:", "Radiation:", "Max distance:"};
+
+const QString RmoServer::buttonNames[][3] = {
+    {"STOP", "3rpm", "6rpm"},
+    {"OFF", "50%", "100%"},
+    {"350", "600", "1200"}
+};
+
 
 RmoServer::RmoServer()
 {
@@ -11,6 +19,7 @@ RmoServer::RmoServer()
     settings.beginGroup("ServerConnection");
     quint16 serverPort = settings.value("port", 2323).toUInt();
     settings.endGroup();
+
 
     if(this->listen(QHostAddress::Any, serverPort))
     {
@@ -32,6 +41,8 @@ RmoServer::RmoServer()
 
 RmoServer::~RmoServer(){
     this->close();
+    qDeleteAll(socketList);
+    delete timer;
 }
 
 
@@ -47,7 +58,7 @@ void RmoServer::timerSlot()
         if (beamLineAngle >= 360)
             beamLineAngle-= 360;
         sendToClients(RadarParameters::AntennaPosition, beamLineAngle);
-        qInfo()<<RadarParameters::AntennaPosition << beamLineAngle;
+        qInfo()<< "Antenna position: " << beamLineAngle;
     }
  }
 
@@ -100,10 +111,10 @@ void RmoServer::slotReadyRead()
                 break;
             nextBlockSize = 0;
             RadarParameters parameter;
-            int value;
+            quint8 value;
             in >> (quint32&)parameter >> value;
-            qDebug() << parameter << value;
-
+            if ((quint32&)parameter >= 0 && (quint32&)parameter < 3 && value >= 0 && value < 3)
+                qDebug() << parametersNames[parameter] << buttonNames[parameter][value];
 
             switch (parameter) {
                 case RadarParameters::RotationSpeed:

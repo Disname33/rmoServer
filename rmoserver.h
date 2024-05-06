@@ -28,6 +28,8 @@ private:
     quint8 maxDistance;
     void sendToClients(RadarParameters parameter, float value, QTcpSocket* socket1 = nullptr);
     void connectionCounter();
+    static const QString parametersNames[];
+    static const QString buttonNames[][3];
 
 private slots:
     void incomingConnection(qintptr handle);
